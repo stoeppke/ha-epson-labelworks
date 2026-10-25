@@ -9,6 +9,7 @@ from . import protocol
 EPSON_VENDOR_ID = 0x04B8
 LABELWORKS_PRODUCT_ID = 0x0705
 SUPPORTED_USB_MODEL = "LW-600P"
+STATUS_POLL_INTERVAL_S = 1
 
 
 @dataclass(frozen=True)
@@ -142,6 +143,7 @@ class PrinterTransport(ABC):
             status = self._query_status(min(5, max(1, deadline - time.monotonic())))
             if status.error_code or self._status_is_complete(status, require_print_end):
                 return status
+            time.sleep(STATUS_POLL_INTERVAL_S)
         raise TimeoutError("timed out waiting for printer to finish")
 
 

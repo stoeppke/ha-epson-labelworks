@@ -1,7 +1,7 @@
 import pytest
 
 from epson_labelworks import protocol
-from epson_labelworks.transport import PrinterTransport
+from epson_labelworks.transport import STATUS_POLL_INTERVAL_S, PrinterTransport
 
 
 class Image:
@@ -76,6 +76,18 @@ def test_wait_until_ready_raises_when_last_status_is_busy(monkeypatch):
     monkeypatch.setattr(transport, "_query_status", lambda timeout_s: busy)
     times = iter([0, 0, 0, 2])
     monkeypatch.setattr("epson_labelworks.transport.time.monotonic", lambda: next(times))
+    monkeypatch.setattr("epson_labelworks.transport.time.sleep", lambda _: None)
 
     with pytest.raises(TimeoutError):
         transport.wait_until_ready(timeout_s=1)
+
+
+def test_wait_until_ready_pauses_between_polls(monkeypatch):
+    transport = FakeTransport([0x02, 0x02, 0x05])
+    sleeps = []
+    monkeypatch.setattr("epson_labelworks.transport.time.sleep", sleeps.append)
+
+    status = transport.wait_until_ready(require_print_end=True)
+
+    assert status.status_code == 0x05
+    assert sleeps == [STATUS_POLL_INTERVAL_S, STATUS_POLL_INTERVAL_S]
